@@ -7,7 +7,7 @@ from django.template import RequestContext
 from django.views.generic import list_detail, create_update
 
 from djangopypi.decorators import user_owns_package, user_maintains_package
-from djangopypi.models import Package, Release
+from djangopypi.models import Package, Release, normalize_name
 from djangopypi.forms import SimplePackageSearchForm, PackageForm
 
 
@@ -25,10 +25,10 @@ def details(request, package, proxy_folder='pypi', **kwargs):
     kwargs.setdefault('template_object_name', 'package')
     kwargs.setdefault('queryset', Package.objects.all())
     try:
-        return list_detail.object_detail(request, object_id=package, **kwargs)
+        return list_detail.object_detail(request, slug_field='normalized_name', slug=normalize_name(package), **kwargs)
     except Http404, e:
         if settings.DJANGOPYPI_PROXY_MISSING:
-            return HttpResponseRedirect('%s/%s/%s/' % 
+            return HttpResponseRedirect('%s/%s/%s/' %
                                         (settings.DJANGOPYPI_PROXY_BASE_URL.rstrip('/'),
                                          proxy_folder,
                                          package))
@@ -50,10 +50,10 @@ def search(request, **kwargs):
         form = SimplePackageSearchForm(request.POST)
     else:
         form = SimplePackageSearchForm(request.GET)
-    
+
     if form.is_valid():
         q = form.cleaned_data['query']
-        kwargs['queryset'] = Package.objects.filter(Q(name__contains=q) | 
+        kwargs['queryset'] = Package.objects.filter(Q(name__contains=q) |
                                                     Q(releases__package_info__contains=q)).distinct()
     return index(request, **kwargs)
 

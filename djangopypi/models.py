@@ -1,3 +1,4 @@
+import re
 import os
 from django.conf import settings
 from django.db import models
@@ -6,6 +7,9 @@ from django.utils import simplejson as json
 from django.utils.datastructures import MultiValueDict
 from django.contrib.auth.models import User
 
+
+def normalize_name(name):
+    return re.sub(r"[-_.]+", "-", name).lower()
 
 
 class PackageInfoField(models.Field):
@@ -41,6 +45,7 @@ class PackageInfoField(models.Field):
     def get_internal_type(self):
         return 'TextField'
 
+
 class Classifier(models.Model):
     name = models.CharField(max_length=255, primary_key=True)
 
@@ -52,6 +57,7 @@ class Classifier(models.Model):
     def __unicode__(self):
         return self.name
 
+
 class Package(models.Model):
     name = models.CharField(max_length=255, unique=True, primary_key=True,
                             editable=False)
@@ -61,6 +67,7 @@ class Package(models.Model):
                                     related_name="packages_owned")
     maintainers = models.ManyToManyField(User, blank=True,
                                          related_name="packages_maintained")
+    normalized_name = models.CharField(max_length=255, editable=False, null=True, db_index=True)
 
     class Meta:
         verbose_name = _(u"package")
@@ -88,6 +95,11 @@ class Package(models.Model):
             return self.releases.get(version=version)
         except Release.DoesNotExist:
             return None
+
+    def save(self, *args, **kwargs):
+        self.normalized_name = normalize_name(self.name)
+        return super(Package, self).save(*args, **kwargs)
+
 
 class Release(models.Model):
     package = models.ForeignKey(Package, related_name="releases", editable=False)
@@ -169,6 +181,7 @@ class Distribution(models.Model):
     def __unicode__(self):
         return self.filename
 
+
 class Review(models.Model):
     release = models.ForeignKey(Release, related_name="reviews")
     rating = models.PositiveSmallIntegerField(blank=True)
@@ -188,18 +201,19 @@ except ImportError:
 class MasterIndex(models.Model):
     title = models.CharField(max_length=255)
     url = models.CharField(max_length=255)
-    
+
     def __unicode__(self):
         return self.title
+
 
 class MirrorLog(models.Model):
     master = models.ForeignKey(MasterIndex, related_name='logs')
     created = models.DateTimeField(default='now')
     releases_added = models.ManyToManyField(Release, blank=True,
                                             related_name='mirror_sources')
-    
+
     def __unicode__(self):
         return '%s (%s)' % (self.master, str(self.created),)
-    
+
     class Meta:
         get_latest_by = "created"

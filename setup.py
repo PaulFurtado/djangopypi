@@ -9,7 +9,7 @@ def fread(fname):
 version = '0.4.4'
 
 setup(
-    name='djangopypi',
+    name='hs-djangopypi',
     version=version,
     description="A Django application that emulates the Python Package Index.",
     long_description=fread("README.rst")+"\n\n"+fread('Changelog.rst')+"\n\n"+fread('AUTHORS.rst'),
