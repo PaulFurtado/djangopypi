@@ -24,9 +24,11 @@ def parse_distutils_request(request):
     One portion of this is the end marker: \r\n\r\n (what Django expects) 
     versus \n\n (what distutils is sending). 
     """
+    # Hack for newer distutils which does things correctly
+    raw_post_data = request.raw_post_data.replace('\r\n', '\n')
     
     try:
-        sep = request.raw_post_data.splitlines()[1]
+        sep = raw_post_data.splitlines()[1]
     except:
         raise ValueError('Invalid post data')
     
@@ -37,7 +39,7 @@ def parse_distutils_request(request):
     except Exception, e:
         pass
     
-    for part in filter(lambda e: e.strip(), request.raw_post_data.split(sep)):
+    for part in filter(lambda e: e.strip(), raw_post_data.split(sep)):
         try:
             header, content = part.lstrip().split('\n',1)
         except Exception, e:
